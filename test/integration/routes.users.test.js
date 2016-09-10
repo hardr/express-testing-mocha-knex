@@ -81,20 +81,90 @@ describe('routes : users', () => {
     });
   });
 
-  // describe('POST /api/v1/users', () => {
-  //   it('should add a new user', (done) => {
-  //     chai.request(server)
-  //     .post('/api/v1/users')
-  //     .end((err, res) => {
-  //       should.not.exist(err);
-  //       res.redirects.length.should.equal(0);
-  //       res.status.should.equal(200);
-  //       res.type.should.equal('application/json');
-  //       res.body.status.should.eql('success');
-  //       res.body.data.length.should.eql(0);
-  //       done();
-  //     });
-  //   });
-  // });
+  describe('POST /api/v1/users', () => {
+    it('should respond with a success message along with a single user that was added', (done) => {
+      chai.request(server)
+      .post('/api/v1/users')
+      .send({
+        username: 'ryan',
+        email: 'ryan@ryan.com'
+      })
+      .end((err, res) => {
+        should.not.exist(err);
+        res.status.should.equal(201);
+        res.type.should.equal('application/json');
+        res.body.status.should.eql('success');
+        res.body.data[0].should.include.keys('id', 'username', 'email', 'created_at');
+        done();
+      });
+    });
+    it('should throw error when username is not provided', (done) => {
+      chai.request(server)
+      .post('/api/v1/users')
+      .send({
+        email: 'incomplete@ryan.com'
+      })
+      .end((err, res) => {
+        done();
+      });
+    });
+  });
+
+  describe('PUT /api/v1/users/:id', () => {
+    it('should update a user field and return before and after info', (done) => {
+      knex('users')
+      .select('*')
+      .then((user) => {
+        const userObject = user[0];
+        chai.request(server)
+        .put(`/api/v1/users/${userObject.id}`)
+        .send({
+          username: 'updatedUser',
+          email: 'updated@user.com'
+        })
+        .end((err, res) => {
+          should.not.exist(err);
+          res.status.should.equal(200);
+          res.type.should.equal('application/json');
+          res.body.status.should.eql('success');
+          var newUserObject = res.body.data[0];
+          newUserObject.username.should.not.eql(userObject.username);
+          newUserObject.email.should.not.eql(userObject.email);
+          newUserObject.username.should.eql('updatedUser');
+          newUserObject.email.should.eql('updated@user.com');
+          done();
+        });
+      });
+
+    });
+  });
+
+  describe('DELETE /api/v1/users/:id', () => {
+    it('should respond with a success message along with single user that was deleted', (done) => {
+      knex('users')
+      .select('*')
+      .then((users) => {
+        const userObject = users[0];
+        const lengthBeforeDelete = users.length;
+        chai.request(server)
+        .delete(`/api/v1/users/${userObject.id}`)
+        .end((err, res) => {
+          should.not.exist(err);
+          res.status.should.equal(200);
+          res.type.should.equal('application/json');
+          res.body.status.should.eql('success');
+          res.body.data[0].should.include.keys(
+            'id', 'username', 'email', 'created_at'
+          );
+          knex('users').select('*')
+          .then((updatedUsers) => {
+            updatedUsers.length.should.eql(lengthBeforeDelete - 1);
+            done();
+          });
+        });
+      });
+
+    });
+  });
 
 });
